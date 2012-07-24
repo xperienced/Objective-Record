@@ -17,6 +17,52 @@
 
 @implementation NSManagedObject (ActiveRecord)
 
+#pragma mark - Private
+
++ (NSString *)queryStringFromDictionary:(NSDictionary *)conditions {
+    NSMutableString *queryString = [NSMutableString new];
+    
+    [conditions.allKeys each:^(id attribute) {
+        [queryString appendFormat:@"%@ == '%@'", 
+         attribute, [conditions valueForKey:attribute]];
+        if (attribute == conditions.allKeys.last) return;
+        [queryString appendString:@" AND "]; 
+    }];
+    
+    return queryString;
+}
+
++ (NSPredicate *)predicateFromStringOrDict:(id)condition {
+    
+    if ([condition isKindOfClass:[NSString class]]) 
+        return [NSPredicate predicateWithFormat:condition];
+    
+    else if ([condition isKindOfClass:[NSDictionary class]]) 
+        return [NSPredicate predicateWithFormat:[self queryStringFromDictionary:condition]];
+    
+    return nil;
+}
+
++ (NSFetchRequest *)createFetchRequestInContext:(NSManagedObjectContext *)context {
+    
+    NSFetchRequest *request = [NSFetchRequest new];
+    NSEntityDescription *entity = [NSEntityDescription entityForName:NSStringFromClass(self) 
+                                              inManagedObjectContext:context];
+    [request setEntity:entity];
+    return request;
+}
+
++ (NSArray *)fetchWithPredicate:(NSPredicate *)predicate 
+                      inContext:(NSManagedObjectContext *)context {
+    
+    NSFetchRequest *request = [self createFetchRequestInContext:context];
+    [request setPredicate:predicate];
+    
+    NSArray *fetchedObjects = [context executeFetchRequest:request error:nil];    
+    if (fetchedObjects.count > 0) return fetchedObjects;
+    return nil;
+}
+
 #pragma mark - Finders
 
 + (NSArray *)all {
@@ -93,52 +139,6 @@
     [[self allInContext:context] each:^(id object) {
         [object delete];
     }];    
-}
-
-#pragma mark - Private
-
-+ (NSString *)queryStringFromDictionary:(NSDictionary *)conditions {
-    NSMutableString *queryString = [NSMutableString new];
-
-    [conditions.allKeys each:^(id attribute) {
-        [queryString appendFormat:@"%@ == '%@'", 
-                                    attribute, [conditions valueForKey:attribute]];
-        if (attribute == conditions.allKeys.last) return;
-        [queryString appendString:@" AND "]; 
-    }];
-
-    return queryString;
-}
-
-+ (NSPredicate *)predicateFromStringOrDict:(id)condition {
-    
-    if ([condition isKindOfClass:[NSString class]]) 
-        return [NSPredicate predicateWithFormat:condition];
-    
-    else if ([condition isKindOfClass:[NSDictionary class]]) 
-        return [NSPredicate predicateWithFormat:[self queryStringFromDictionary:condition]];
-
-    return nil;
-}
-
-+ (NSFetchRequest *)createFetchRequestInContext:(NSManagedObjectContext *)context {
-    
-    NSFetchRequest *request = [NSFetchRequest new];
-    NSEntityDescription *entity = [NSEntityDescription entityForName:NSStringFromClass(self) 
-                                              inManagedObjectContext:context];
-    [request setEntity:entity];
-    return request;
-}
-
-+ (NSArray *)fetchWithPredicate:(NSPredicate *)predicate 
-                      inContext:(NSManagedObjectContext *)context {
-    
-    NSFetchRequest *request = [self createFetchRequestInContext:context];
-    [request setPredicate:predicate];
-    
-    NSArray *fetchedObjects = [context executeFetchRequest:request error:nil];    
-    if (fetchedObjects.count > 0) return fetchedObjects;
-    return nil;
 }
 
 @end
